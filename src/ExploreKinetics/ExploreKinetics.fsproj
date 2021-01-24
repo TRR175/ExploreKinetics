@@ -8,12 +8,25 @@
 
   <ItemGroup>
     <PackageReference Include="Dash.NET" Version="0.1.0-alpha6" />
+    <PackageReference Include="Deedle" Version="2.3.0" />
     <PackageReference Include="Giraffe" Version="4.1.*" />
     <PackageReference Include="Plotly.NET" Version="2.0.0-beta5" />
     <PackageReference Include="TaskBuilder.fs" Version="2.1.*" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Cold_LogFPKM.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Control_LogFPKM.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Heat_LogFPKM.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="HighLight_LogFPKM.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
     <Compile Include="Program.fs" />
   </ItemGroup>
 
