@@ -28,6 +28,15 @@ open ComponentPropTypes
 
 module DashAppDomain = 
 
+    type CombinationType =
+        | Combine
+        | Stack
+
+        static member ofString str =
+            match str with
+            | "Combine" | "combine" -> Combine
+            | "Stack" | "stack" -> Stack
+
     type Condition =
         | Heat
         | Cold
@@ -297,9 +306,14 @@ module Data =
         |> Map.find id
         |> fun row -> id => (KineticDataRow.getPlotData row)
 
-    let getFigureForIdsAndConditions (geneIDs : string []) (conditions: Condition []) : GenericChart.Figure =
+    let getControlDataForId id = 
+        controlData
+        |> Map.find id
+        |> fun row -> id => (KineticControlRow.getPlotData row)
 
-        let xAxis = 
+    let getFigureForIdsAndConditions (geneIDs : string []) (conditions: Condition []) (combinationType: CombinationType) (includeControl: bool) : GenericChart.Figure =
+
+        let xAxis() = 
             Axis.LinearAxis.init(
                 Title = "Sampled timepoint [[min]_[acclimation state]]",
                 Ticks = StyleParam.TickOptions.Inside,
@@ -307,7 +321,7 @@ module Data =
                 Showline = true
             )
         
-        let yAxis = 
+        let yAxis() = 
             Axis.LinearAxis.init(
                 Title = "logFPKM",
                 Ticks = StyleParam.TickOptions.Inside,
@@ -315,28 +329,65 @@ module Data =
                 Showline = true
             )
 
+        let controlPlot id = 
+            if includeControl then
+                [|
+                    getControlDataForId id
+                    |> fun (id,data) ->
+                        Chart.Spline(data,Width=3,Smoothing=0.3,ShowMarkers = true)
+                        |> Chart.withTraceName (sprintf "[Contol]: %s" id)
+                |]
+            else    
+                [||]
+
         geneIDs
         |> Array.map (fun id ->
             conditions
             |> Array.map (fun condition ->
                 getDataForIdAndCondition id condition
                 |> fun (id,data) ->
-                    Chart.Spline(data,UseWebGL=true,Width=3)
+                    Chart.Spline(data,Width=3,Smoothing=0.3,ShowMarkers = true)
                     |> Chart.withTraceName (sprintf "[%s]: %s" (Condition.toString condition) id)
             )
+            |> fun x -> Array.concat [x; controlPlot id]
             |> Chart.Combine
         )
-        |> Chart.Combine
-        |> Chart.withX_Axis xAxis
-        |> Chart.withY_Axis yAxis
-        |> Chart.withTitle "<b>Comparison plot</b>"
-        |> GenericChart.mapLayout (fun l -> 
-            l?height <- 700
-            l?font <- Font.init (Family=StyleParam.FontFamily.Droid_Sans , Size = 18)
-            l?colorway <- ChartTemplates.ColorWays.plotly
-            l
-        )
-        |> GenericChart.toFigure
+        |> fun charts ->
+            match combinationType with
+            | Combine ->
+                charts
+                |> Chart.Combine
+                |> Chart.withX_Axis (xAxis())
+                |> Chart.withY_Axis (yAxis())
+                |> Chart.withTitle "<b>Comparison plot</b>"
+                |> GenericChart.mapLayout (fun l -> 
+                    l?height <- 700
+                    l?font <- Font.init (Family=StyleParam.FontFamily.Droid_Sans , Size = 18)
+                    l?colorway <- ChartTemplates.ColorWays.plotly
+                    l
+                )
+                |> GenericChart.toFigure
+            | Stack ->
+                let len = charts.Length
+                charts
+                |> Array.map ( fun c ->
+                    c
+                    |> Chart.withX_Axis (xAxis())
+                    |> Chart.withY_Axis (yAxis())
+                    |> GenericChart.mapLayout (fun l -> 
+                        l?colorway <- ChartTemplates.ColorWays.plotly
+                        l
+                    )
+                )
+                |> Chart.SingleStack
+                |> Chart.withTitle "<b>Comparison plot</b>"
+                |> GenericChart.mapLayout (fun l -> 
+                    l?height <- 200 * len
+                    l?font <- Font.init (Family=StyleParam.FontFamily.Droid_Sans , Size = 18)
+                    l?colorway <- ChartTemplates.ColorWays.plotly
+                    l
+                )
+                |> GenericChart.toFigure
 
 //Note that this layout uses css classes defined by Bulma (https://bulma.io/), which gets defined as a css dependency in the app section below.
 open DashAppDomain
@@ -345,6 +396,8 @@ let testGraph =
     Data.getFigureForIdsAndConditions
         [|"AT1G01010"; "AT1G01020"|]
         [|Condition.Cold; Condition.Heat; Condition.HighLight|]
+        CombinationType.Combine
+        false
 
 let idSelectionDropdown = 
     Dropdown.dropdown "idSelection" [
@@ -355,8 +408,6 @@ let idSelectionDropdown =
             |> Seq.map (fun id -> DropdownOption.create id id false id)
         )
     ] []
-
-//(let controlCheckBox)
 
 let conditionSelectionDropdown =
     Dropdown.dropdown "conditionSelection" [
@@ -369,6 +420,24 @@ let conditionSelectionDropdown =
             ]
             |> List.map (fun c -> DropdownOption.create c c false c)
         )
+    ] []
+
+let controlCheckbox =
+    RadioItems.radioItems "controlCheckbox" [
+        RadioItems.Options [
+            RadioItemsOption.create "Yes" "Yes" false ""
+            RadioItemsOption.create "No" "No" false ""
+        ]
+        RadioItems.Value "No"
+    ] []
+
+let combineCheckbox =
+    RadioItems.radioItems "combineCheckbox" [
+        RadioItems.Options [
+            RadioItemsOption.create "Combine" "Combine" false ""
+            RadioItemsOption.create "Stack" "Stack" false ""
+        ]
+        RadioItems.Value "Combine"
     ] []
 
 let formControl labelText children = 
@@ -390,10 +459,11 @@ let layout =
         Div.div [ClassName "columns"; Id "mainColumns"] [
             Div.div [ClassName "column is-3 p-4 m-0 has-background-white-ter"; Id "plotParameters"] [
                 Div.div [ClassName "container"] [ 
-                    H1.h1 [ClassName "title pt-4 m-0 "] [str "plot parameters"]
+                    H1.h1 [ClassName "title pt-4 pb-4"] [str "plot parameters"]
                     formControl "Compare for the following transcript(s):" [idSelectionDropdown]
                     formControl "Across the following conditions:" [conditionSelectionDropdown]
-                    formControl "Include control trace for each gene" []
+                    formControl "Include control trace for each gene?" [controlCheckbox]
+                    formControl "Combine gene plots via" [combineCheckbox] 
                     formControl "" [Button.button [ClassName "button is-primary"; Id "startbtn"] [str "Compare"]] 
                 ]
             ]
@@ -416,14 +486,18 @@ let comparisonCallback =
         [CallbackInput.create("startbtn","n_clicks")],
         (CallbackOutput.create("mainGraph","figure")),
         (
-            fun (clicks:int64) (ids:JArray) (conditions:JArray)->
+            fun (clicks:int64) (ids:JArray) (conditions:JArray) (includeControl:string) (combinationType:string) ->
                 let ids = ids.ToObject<string[]>()
                 let conditions = conditions.ToObject<string[]>()
-                Data.getFigureForIdsAndConditions ids (conditions |> Array.map Condition.ofString)
+                let includeControl = match includeControl with | "Yes" -> true | "No" -> false
+                let combinationType = combinationType |> CombinationType.ofString
+                Data.getFigureForIdsAndConditions ids (conditions |> Array.map Condition.ofString) combinationType includeControl
         ),
         State= [
             CallbackState.create("idSelection","value")
             CallbackState.create("conditionSelection","value")
+            CallbackState.create("controlCheckbox","value")
+            CallbackState.create("combineCheckbox","value")
         ]
     )
 
