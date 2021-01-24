@@ -78,17 +78,17 @@ module DashAppDomain =
 
         static member getPlotData (row: KineticDataRow) =
             [
-                "0min"          => row.T0
-                "1min_Acc"      => row.T15_Acc
-                "15min_Acc"     => row.T15_Acc    
-                "180min_Acc"    => row.T180_Acc   
-                "2880min_Acc"   => row.T2880_Acc  
-                "5760min_Acc"   => row.T5760_Acc  
-                "1min_DeAcc"    => row.T1_DeAcc   
-                "15min_DeAcc"   => row.T15_DeAcc  
-                "180min_DeAcc"  => row.T180_DeAcc 
-                "2880min_DeAcc" => row.T2880_DeAcc
-                "5760min_DeAcc" => row.T5760_DeAcc
+                "0"          => row.T0
+                "1_A"      => row.T15_Acc
+                "15_A"     => row.T15_Acc    
+                "180_A"    => row.T180_Acc   
+                "2880_A"   => row.T2880_Acc  
+                "5760_A"   => row.T5760_Acc  
+                "1_D"    => row.T1_DeAcc   
+                "15_D"   => row.T15_DeAcc  
+                "180_D"  => row.T180_DeAcc 
+                "2880_D" => row.T2880_DeAcc
+                "5760_D" => row.T5760_DeAcc
             ]
 
     type KineticControlRow = {
@@ -115,13 +115,13 @@ module DashAppDomain =
 
         static member getPlotData (row: KineticControlRow) =
             [
-                "0min"          => row.T0
-                "180min_Acc"    => row.T180_Acc   
-                "2880min_Acc"   => row.T2880_Acc  
-                "5760min_Acc"   => row.T5760_Acc  
-                "180min_DeAcc"  => row.T180_DeAcc 
-                "2880min_DeAcc" => row.T2880_DeAcc
-                "5760min_DeAcc" => row.T5760_DeAcc
+                "0"          => row.T0
+                "180_A"    => row.T180_Acc   
+                "2880_A"   => row.T2880_Acc  
+                "5760_A"   => row.T5760_Acc  
+                "180_D"  => row.T180_DeAcc 
+                "2880_D" => row.T2880_DeAcc
+                "5760_D" => row.T5760_DeAcc
             ]
 
 module Data =
@@ -298,18 +298,44 @@ module Data =
         |> fun row -> id => (KineticDataRow.getPlotData row)
 
     let getFigureForIdsAndConditions (geneIDs : string []) (conditions: Condition []) : GenericChart.Figure =
+
+        let xAxis = 
+            Axis.LinearAxis.init(
+                Title = "Sampled timepoint [[min]_[acclimation state]]",
+                Ticks = StyleParam.TickOptions.Inside,
+                Mirror = StyleParam.Mirror.AllTicks,
+                Showline = true
+            )
+        
+        let yAxis = 
+            Axis.LinearAxis.init(
+                Title = "logFPKM",
+                Ticks = StyleParam.TickOptions.Inside,
+                Mirror = StyleParam.Mirror.AllTicks,
+                Showline = true
+            )
+
         geneIDs
         |> Array.map (fun id ->
             conditions
             |> Array.map (fun condition ->
                 getDataForIdAndCondition id condition
                 |> fun (id,data) ->
-                    Chart.Line data
+                    Chart.Spline(data,UseWebGL=true,Width=3)
                     |> Chart.withTraceName (sprintf "[%s]: %s" (Condition.toString condition) id)
             )
             |> Chart.Combine
         )
         |> Chart.Combine
+        |> Chart.withX_Axis xAxis
+        |> Chart.withY_Axis yAxis
+        |> Chart.withTitle "<b>Comparison plot</b>"
+        |> GenericChart.mapLayout (fun l -> 
+            l?height <- 700
+            l?font <- Font.init (Family=StyleParam.FontFamily.Droid_Sans , Size = 18)
+            l?colorway <- ChartTemplates.ColorWays.plotly
+            l
+        )
         |> GenericChart.toFigure
 
 //Note that this layout uses css classes defined by Bulma (https://bulma.io/), which gets defined as a css dependency in the app section below.
@@ -330,6 +356,8 @@ let idSelectionDropdown =
         )
     ] []
 
+//(let controlCheckBox)
+
 let conditionSelectionDropdown =
     Dropdown.dropdown "conditionSelection" [
         Dropdown.Multi true
@@ -343,8 +371,14 @@ let conditionSelectionDropdown =
         )
     ] []
 
+let formControl labelText children = 
+    Div.div [ClassName "field"] [
+        Label.label [ClassName "label"] [str labelText]
+        Div.div [ClassName "control"] children
+    ]
+
 let layout = 
-    Div.div [] [
+    Div.div [Id "layout"] [
         Section.section [ClassName "hero is-primary"] [
             Div.div [ClassName "hero-body"] [
                 Div.div [ClassName "container"] [
@@ -353,14 +387,20 @@ let layout =
                 ]
             ]
         ]
-        Section.section [ClassName "section"] [
-            H2.h2 [] [str "Compare for the following transcript(s)"]
-            idSelectionDropdown
-            H2.h2 [] [str "Across the following conditions:"]
-            conditionSelectionDropdown
-            Button.button [ClassName "button is-primary"; Id "startbtn"] [str "Compare"]
-            Br.br [] []
-            Graph.graph "test" [Graph.Figure testGraph] []
+        Div.div [ClassName "columns"; Id "mainColumns"] [
+            Div.div [ClassName "column is-3 p-4 m-0 has-background-white-ter"; Id "plotParameters"] [
+                Div.div [ClassName "container"] [ 
+                    H1.h1 [ClassName "title pt-4 m-0 "] [str "plot parameters"]
+                    formControl "Compare for the following transcript(s):" [idSelectionDropdown]
+                    formControl "Across the following conditions:" [conditionSelectionDropdown]
+                    formControl "Include control trace for each gene" []
+                    formControl "" [Button.button [ClassName "button is-primary"; Id "startbtn"] [str "Compare"]] 
+                ]
+            ]
+            Div.div [ClassName "column is-9 graphColumn"] [
+                Graph.graph "mainGraph" [Graph.Figure testGraph;] []
+            ]
+            
         ]
     ]
 
@@ -374,7 +414,7 @@ open Newtonsoft.Json.Linq
 let comparisonCallback = 
     Callback(
         [CallbackInput.create("startbtn","n_clicks")],
-        (CallbackOutput.create("test","figure")),
+        (CallbackOutput.create("mainGraph","figure")),
         (
             fun (clicks:int64) (ids:JArray) (conditions:JArray)->
                 let ids = ids.ToObject<string[]>()
@@ -399,8 +439,8 @@ let dashApp =
     DashApp.initDefault() // create a Dash.NET app with default settings
     |> DashApp.withLayout layout // register the layout defined above.
     |> DashApp.appendCSSLinks [ 
-        "main.css" // serve your custom css
         "https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.1/css/bulma.min.css" // register bulma as an external css dependency
+        "main.css" // serve your custom css
     ]
     |> DashApp.addCallback comparisonCallback
 

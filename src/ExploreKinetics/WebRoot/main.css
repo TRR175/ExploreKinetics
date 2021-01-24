@@ -1,20 +1,41 @@
+#mainGraph {
+    min-height:700px;
+}
+
+body, button, input, optgroup, select, textarea {
+    font-family: 'droid sans'
+}
+
+html {
+    height: 100vh;
+}
+
 body {
-    font-family: Arial, Helvetica, sans-serif;
-    color: #333;
-    font-size: .9em;
+    height:100%;
 }
 
-h1 {
-    font-size: 1.5em;
-    color: #334499;
+#react-entry-point{
+    height:100%
 }
 
-.graph-style {
-    background-color: rgba(0,0,0,0)
+#_dash-app-content {
+    height:100%
 }
 
-#main-section {
-    background: #FFEFBA; /* fallback for old browsers */
-    background: -webkit-linear-gradient(to right, #FFFFFF, #FFEFBA); /* Chrome 10-25, Safari 5.1-6 */
-    background: linear-gradient(to right, #FFFFFF, #FFEFBA); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+#mainColumns {
+    height:100%
+}
+
+#layout{
+    height:100%
+}
+
+.p-4 {
+    padding-top: 1rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+
+.column{
+    padding:unset
 }
