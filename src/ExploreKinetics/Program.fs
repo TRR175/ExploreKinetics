@@ -57,6 +57,7 @@ module DashAppDomain =
 
     type KineticDataRow = {
         TranscriptIdentifier: string
+        TrivialName         : string
         T0                  : float
         T1_Acc              : float
         T15_Acc             : float
@@ -69,9 +70,10 @@ module DashAppDomain =
         T2880_DeAcc         : float
         T5760_DeAcc         : float
     } with
-        static member create id t0 t1a t2a t3a t4a t5a t1d t2d t3d t4d t5d = 
+        static member create id tn t0 t1a t2a t3a t4a t5a t1d t2d t3d t4d t5d = 
             {
                 TranscriptIdentifier= id
+                TrivialName         = tn
                 T0                  = t0
                 T1_Acc              = t1a
                 T15_Acc             = t2a
@@ -102,6 +104,7 @@ module DashAppDomain =
 
     type KineticControlRow = {
         TranscriptIdentifier: string
+        TrivialName         : string 
         T0                  : float
         T180_Acc            : float
         T2880_Acc           : float
@@ -110,9 +113,10 @@ module DashAppDomain =
         T2880_DeAcc         : float
         T5760_DeAcc         : float
     } with
-        static member create id t0 t3a t4a t5a t3d t4d t5d = 
+        static member create id tn t0 t3a t4a t5a t3d t4d t5d = 
             {
                 TranscriptIdentifier= id
+                TrivialName         = tn
                 T0                  = t0
                 T180_Acc            = t3a
                 T2880_Acc           = t4a
@@ -156,17 +160,19 @@ module Data =
         let stream = assembly.GetManifestResourceStream(ressourcePath)
         Frame.ReadCsv(stream)
         |> Frame.indexRows "TranscriptIdentifier"
-        |> Frame.mapRows (fun rk os ->
-            rk => 
-            KineticControlRow.create
-                rk
-                (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
-                (os.GetAs<float>("Cont_t_180_d_FALSE_mean"))
-                (os.GetAs<float>("Cont_t_2880_d_FALSE_mean"))
-                (os.GetAs<float>("Cont_t_5760_d_FALSE_mean"))
-                (os.GetAs<float>("Cont_t_180_d_TRUE_mean"))
-                (os.GetAs<float>("Cont_t_2880_d_TRUE_mean"))
-                (os.GetAs<float>("Cont_t_5760_d_TRUE_mean"))
+        |> Frame.groupRowsBy "TrivialName"
+        |> Frame.mapRows (fun ((tName:string),(id:string)) os ->
+            (sprintf "[%s] %s" id (tName.Replace(";", "; "))) => 
+                KineticControlRow.create
+                    id
+                    (tName.Replace(";", "; "))
+                    (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
+                    (os.GetAs<float>("Cont_t_180_d_FALSE_mean"))
+                    (os.GetAs<float>("Cont_t_2880_d_FALSE_mean"))
+                    (os.GetAs<float>("Cont_t_5760_d_FALSE_mean"))
+                    (os.GetAs<float>("Cont_t_180_d_TRUE_mean"))
+                    (os.GetAs<float>("Cont_t_2880_d_TRUE_mean"))
+                    (os.GetAs<float>("Cont_t_5760_d_TRUE_mean"))
         )
         |> Series.values
         |> Map.ofSeq
@@ -190,21 +196,23 @@ module Data =
         let stream = assembly.GetManifestResourceStream(ressourcePath)
         Frame.ReadCsv(stream)
         |> Frame.indexRows "TranscriptIdentifier"
-        |> Frame.mapRows (fun rk os ->
-            rk => 
-            KineticDataRow.create
-                rk
-                (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_1_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_15_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_180_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_2880_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_5760_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_1_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_15_d_FALSE_mean"))
-                (os.GetAs<float>("Heat_t_180_d_TRUE_mean"))
-                (os.GetAs<float>("Heat_t_2880_d_TRUE_mean"))
-                (os.GetAs<float>("Heat_t_5760_d_TRUE_mean"))
+        |> Frame.groupRowsBy "TrivialName"
+        |> Frame.mapRows (fun ((tName:string),(id:string)) os ->
+            (sprintf "[%s] %s" id (tName.Replace(";", "; "))) => 
+                KineticDataRow.create
+                    id 
+                    (tName.Replace(";", "; "))
+                    (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_1_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_15_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_180_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_2880_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_5760_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_1_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_15_d_FALSE_mean"))
+                    (os.GetAs<float>("Heat_t_180_d_TRUE_mean"))
+                    (os.GetAs<float>("Heat_t_2880_d_TRUE_mean"))
+                    (os.GetAs<float>("Heat_t_5760_d_TRUE_mean"))
         )
         |> Series.values
         |> Map.ofSeq
@@ -228,21 +236,23 @@ module Data =
         let stream = assembly.GetManifestResourceStream(ressourcePath)
         Frame.ReadCsv(stream)
         |> Frame.indexRows "TranscriptIdentifier"
-        |> Frame.mapRows (fun rk os ->
-            rk => 
-            KineticDataRow.create
-                rk
-                (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
-                (os.GetAs<float>("Cold_t_1_d_FALSE_mean"))
-                (os.GetAs<float>("Cold_t_15_d_FALSE_mean"))
-                (os.GetAs<float>("Cold_t_180_d_FALSE_mean"))
-                (os.GetAs<float>("Cold_t_2880_d_FALSE_mean"))
-                (os.GetAs<float>("Cold_t_5760_d_FALSE_mean"))
-                (os.GetAs<float>("Cold_t_1_d_TRUE_mean"))
-                (os.GetAs<float>("Cold_t_15_d_TRUE_mean"))
-                (os.GetAs<float>("Cold_t_180_d_TRUE_mean"))
-                (os.GetAs<float>("Cold_t_2880_d_TRUE_mean"))
-                (os.GetAs<float>("Cold_t_5760_d_TRUE_mean"))
+        |> Frame.groupRowsBy "TrivialName"
+        |> Frame.mapRows (fun ((tName:string),(id:string)) os ->
+            (sprintf "[%s] %s" id (tName.Replace(";", "; "))) => 
+                KineticDataRow.create
+                    id 
+                    (tName.Replace(";", "; "))
+                    (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
+                    (os.GetAs<float>("Cold_t_1_d_FALSE_mean"))
+                    (os.GetAs<float>("Cold_t_15_d_FALSE_mean"))
+                    (os.GetAs<float>("Cold_t_180_d_FALSE_mean"))
+                    (os.GetAs<float>("Cold_t_2880_d_FALSE_mean"))
+                    (os.GetAs<float>("Cold_t_5760_d_FALSE_mean"))
+                    (os.GetAs<float>("Cold_t_1_d_TRUE_mean"))
+                    (os.GetAs<float>("Cold_t_15_d_TRUE_mean"))
+                    (os.GetAs<float>("Cold_t_180_d_TRUE_mean"))
+                    (os.GetAs<float>("Cold_t_2880_d_TRUE_mean"))
+                    (os.GetAs<float>("Cold_t_5760_d_TRUE_mean"))
         )
         |> Series.values
         |> Map.ofSeq
@@ -267,21 +277,23 @@ module Data =
         let stream = assembly.GetManifestResourceStream(ressourcePath)
         Frame.ReadCsv(stream)
         |> Frame.indexRows "TranscriptIdentifier"
-        |> Frame.mapRows (fun rk os ->
-            rk => 
-            KineticDataRow.create
-                rk
-                (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
-                (os.GetAs<float>("Hlig_t_1_d_FALSE_mean"))
-                (os.GetAs<float>("Hlig_t_15_d_FALSE_mean"))
-                (os.GetAs<float>("Hlig_t_180_d_FALSE_mean"))
-                (os.GetAs<float>("Hlig_t_2880_d_FALSE_mean"))
-                (os.GetAs<float>("Hlig_t_5760_d_FALSE_mean"))
-                (os.GetAs<float>("Hlig_t_1_d_TRUE_mean"))
-                (os.GetAs<float>("Hlig_t_15_d_TRUE_mean"))
-                (os.GetAs<float>("Hlig_t_180_d_TRUE_mean"))
-                (os.GetAs<float>("Hlig_t_2880_d_TRUE_mean"))
-                (os.GetAs<float>("Hlig_t_5760_d_TRUE_mean"))
+        |> Frame.groupRowsBy "TrivialName"
+        |> Frame.mapRows (fun ((tName:string),(id:string)) os ->
+            (sprintf "[%s] %s" id (tName.Replace(";", "; "))) => 
+                KineticDataRow.create
+                    id 
+                    (tName.Replace(";", "; "))
+                    (os.GetAs<float>("Cont_t_0_d_FALSE_mean"))
+                    (os.GetAs<float>("Hlig_t_1_d_FALSE_mean"))
+                    (os.GetAs<float>("Hlig_t_15_d_FALSE_mean"))
+                    (os.GetAs<float>("Hlig_t_180_d_FALSE_mean"))
+                    (os.GetAs<float>("Hlig_t_2880_d_FALSE_mean"))
+                    (os.GetAs<float>("Hlig_t_5760_d_FALSE_mean"))
+                    (os.GetAs<float>("Hlig_t_1_d_TRUE_mean"))
+                    (os.GetAs<float>("Hlig_t_15_d_TRUE_mean"))
+                    (os.GetAs<float>("Hlig_t_180_d_TRUE_mean"))
+                    (os.GetAs<float>("Hlig_t_2880_d_TRUE_mean"))
+                    (os.GetAs<float>("Hlig_t_5760_d_TRUE_mean"))
         )
         |> Series.values
         |> Map.ofSeq
@@ -394,7 +406,7 @@ open DashAppDomain
 
 let testGraph = 
     Data.getFigureForIdsAndConditions
-        [|"AT1G01010"; "AT1G01020"|]
+        [|"[AT3G12580] Q9LHA8; HSP70; ATHSP70"|]
         [|Condition.Cold; Condition.Heat; Condition.HighLight|]
         CombinationType.Combine
         false
