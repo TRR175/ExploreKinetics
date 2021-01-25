@@ -347,7 +347,7 @@ module Data =
                     getControlDataForId id
                     |> fun (id,data) ->
                         Chart.Spline(data,Width=3,Smoothing=0.3,ShowMarkers = true)
-                        |> Chart.withTraceName (sprintf "[Contol]: %s" id)
+                        |> Chart.withTraceName (sprintf "[Contol]: %s" (id.Split("]").[0].Replace("[","")))
                 |]
             else    
                 [||]
@@ -359,7 +359,7 @@ module Data =
                 getDataForIdAndCondition id condition
                 |> fun (id,data) ->
                     Chart.Spline(data,Width=3,Smoothing=0.3,ShowMarkers = true)
-                    |> Chart.withTraceName (sprintf "[%s]: %s" (Condition.toString condition) id)
+                    |> Chart.withTraceName (sprintf "[%s]: %s" (Condition.toString condition) (id.Split("]").[0].Replace("[","")))
             )
             |> fun x -> Array.concat [x; controlPlot id]
             |> Chart.Combine
@@ -458,13 +458,42 @@ let formControl labelText children =
         Div.div [ClassName "control"] children
     ]
 
+let icon fas text =
+    Span.span [ClassName "icon-text"] [
+         Span.span [ClassName "icon-text"] [I.i [ClassName (sprintf "%s" fas)][]]
+         Span.span [] [str text]
+    ]
+
+
 let layout = 
     Div.div [Id "layout"] [
         Section.section [ClassName "hero is-primary"] [
             Div.div [ClassName "hero-body"] [
                 Div.div [ClassName "container"] [
-                    H1.h1 [ClassName "title"] [str "ExploreKinetics"]
-                    H2.h2 [ClassName "subtitle"] [str "Explore the TRR175 core kinetics dataset!"]
+                    Div.div [ClassName "media"] [
+                        Div.div [ClassName "media-left"] [
+                            Figure.figure [ClassName "image is-128x128"] [
+                                Img.img [Custom ("src", box "img/TRR175.png")] []
+                            ]
+                        ]
+                        Div.div [ClassName "media-content"] [
+                            H1.h1 [ClassName "title"] [str "ExploreKinetics"]
+                            H2.h2 [ClassName "subtitle"] [str "Explore the TRR175 core kinetics dataset!"]
+                            H2.h2 [ClassName "subtitle"] [str "Use the chart controls on the left to plot the timeseries data of your gene(s) of choice compared across the conditions of choice."]
+                        ]
+                    ]
+                ]
+            ]
+            Div.div [ClassName "hero-foot mb-4"] [
+                Nav.nav [ClassName "tabs"] [
+                    Div.div [ClassName "container"] [
+                        Ul.ul [][
+                            Li.li [] [A.a [Custom("href",box"https://github.com/TRR175/ExploreKinetics")] [icon "fas fa-code-branch" "Source code"]]
+                            Li.li [] [A.a [Custom("href",box"mailto:muehlhaus@bio.uni-kl.de")] [icon "fas fa-user-friends" "Contact"]]
+                            Li.li [] [A.a [Custom("href",box"https://twitter.com/SFB_TR175")] [icon "fab fa-twitter" "Get in touch"]]
+                            Li.li [] [A.a [Custom("href",box"https://github.com/TRR175/ExploreKinetics/discussions")] [icon "fas fa-comments" "Suggest a feature"]]
+                        ]
+                    ]
                 ]
             ]
         ]
@@ -528,6 +557,7 @@ let dashApp =
         "https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.1/css/bulma.min.css" // register bulma as an external css dependency
         "main.css" // serve your custom css
     ]
+    |> DashApp.appendScripts ["https://kit.fontawesome.com/0d3e0ea7a6.js"] 
     |> DashApp.addCallback comparisonCallback
 
 // The things below are Giraffe/ASP:NetCore specific and will likely be abstracted in the future.
